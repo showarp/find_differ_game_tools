@@ -1,0 +1,2 @@
+# 基于opencv的qq游戏大家来找茬辅助工具
+通过opencv处理图像以找到两图片中不一样的地方并使用pyautogui实现自动化点击，具体算法请看step_by_step.ipynb
