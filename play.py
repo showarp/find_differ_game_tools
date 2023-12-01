@@ -1,5 +1,6 @@
 import os
 os.environ["OMP_NUM_THREADS"] = '1'
+from sklearn.metrics import silhouette_score
 import win32gui
 from PIL import ImageGrab
 import cv2 as cv
@@ -26,31 +27,42 @@ def play():
     IMG2_OFFSET = IMG1_RIGHT-IMG1_LEFT+76
     img1 = img[IMG1_TOP:IMG1_BOTTOM,IMG1_LEFT:IMG1_RIGHT,:]
     img2 = img[IMG1_TOP:IMG1_BOTTOM,IMG1_LEFT+IMG2_OFFSET:IMG1_RIGHT+IMG2_OFFSET,:]
-    plt.imshow(img1)
-    plt.show()
-    img1_bgr = cv.cvtColor(img1,cv.COLOR_RGB2BGR)
-    img2_bgr = cv.cvtColor(img2,cv.COLOR_RGB2BGR)
-    img1_blur = cv.blur(img1_bgr,(5,5)).astype(np.int16)
-    img2_blur = cv.blur(img2_bgr,(5,5)).astype(np.int16)
-    newimg = abs(img2_blur-img1_blur).astype(np.uint8)
-    newimg = cv.cvtColor(newimg,cv.COLOR_BGR2GRAY)
-    contrast = 0
-    brightness = 0
-    newimg = newimg.astype(np.int16) * (contrast/127 + 1) - contrast+brightness 
-    newimg = newimg.astype(np.uint8)
-    ret,thresh = cv.threshold(newimg,20,1,cv.THRESH_BINARY)#阈值设置为25 大于该阈值设置为1
+    
+    offset = img1.mean(0).mean(0) - img2.mean(0).mean(0)
+    offset_img = np.zeros(img1.shape)
+    offset_img[:,:,0] = offset[0]
+    offset_img[:,:,1] = offset[1]
+    offset_img[:,:,2] = offset[2]
+    offset_img = offset_img.astype(np.uint8)
+    offset_img = cv.add(img2,offset_img)
+    img2 = offset_img
+    redimg = abs(img1[:,:,0].astype('int16') - img2[:,:,0].astype('int16')).astype('uint8')
+    greenimg = abs(img1[:,:,1].astype('int16') - img2[:,:,1].astype('int16')).astype('uint8')
+    blueimg = abs(img1[:,:,2].astype('int16') - img2[:,:,2].astype('int16')).astype('uint8')
+    redimg = cv.fastNlMeansDenoising(redimg,0.5,7,21)
+    greenimg = cv.fastNlMeansDenoising(greenimg,0.5,7,21)
+    blueimg = cv.fastNlMeansDenoising(blueimg,0.5,7,21)
+    redimg = redimg.astype('int16')
+    redimg = (redimg*redimg*0.2).astype('uint8')
+    greenimg = greenimg.astype('int16')
+    greenimg = (greenimg*greenimg*0.2).astype('uint8')
+    blueimg = blueimg.astype('int16')
+    blueimg = (blueimg*blueimg*0.2).astype('uint8')
+    rgbimg = cv.add(redimg,greenimg)
+    rgbimg = cv.add(rgbimg,blueimg)
+    ret,thresh = cv.threshold(rgbimg,100,1,cv.THRESH_BINARY)
+    rgbimg = cv.fastNlMeansDenoising(rgbimg,None,7,21)
 
     contours, hierarchy = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    km = KMeans(n_clusters=5,n_init=20)
-    data = np.vstack(contours)
-    dataShape = data.shape
-    data = data.reshape((dataShape[0],dataShape[2]))
-    km.fit(data)
-    for x,y in km.cluster_centers_:
-        clickX = x1+IMG1_LEFT+int(x)
-        clickY = y1 +IMG1_TOP+int(y)
+    contours = sorted(list(contours),key = lambda x:cv.contourArea(x),reverse=True)
+    for i in range(6):
+        M = cv.moments(contours[i])
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+        clickX = x1+IMG1_LEFT+int(cX)
+        clickY = y1 +IMG1_TOP+int(cY)
         pyautogui.click(x=clickX,y=clickY)
-        time.sleep(0.5)   
+        time.sleep(2) 
     pyautogui.moveTo(100,100)
 for i in range(1):
     play()
