@@ -1,11 +1,8 @@
 import os
 os.environ["OMP_NUM_THREADS"] = '1'
-from sklearn.metrics import silhouette_score
 import win32gui
 from PIL import ImageGrab
 import cv2 as cv
-from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 import time
 import pyautogui
 import numpy as np
@@ -64,6 +61,6 @@ def play():
         pyautogui.click(x=clickX,y=clickY)
         time.sleep(2) 
     pyautogui.moveTo(100,100)
-for i in range(1):
+for i in range(1):#设置游戏轮数
     play()
     time.sleep(4)
